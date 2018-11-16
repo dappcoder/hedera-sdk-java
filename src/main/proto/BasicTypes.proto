@@ -7,14 +7,23 @@ import "Timestamp.proto";
 option java_package = "com.hederahashgraph.api.proto.java";
 option java_multiple_files = true;
 
-/* Each shard has a nonnegative shard number. Each realm within a given shard has a nonnegative realm number (that number might be reused in other shards). And each account, file, and smart contract instance within a given realm has a nonnegative number (which might be reused in other realms). Every account, file, and smart contract instance is within exactly one realm. So a FileID is a triplet of numbers, like 0.1.2 for entity number 2 within realm 1  within shard 0.  Each realm maintains a single counter for assigning numbers,  so if there is a file with ID 0.1.2, then there won't be an account or smart  contract instance with ID 0.1.2.
-
-  Everything is partitioned into realms so that each Solidity smart contract can  access everything in just a single realm, locking all those entities while it's  running, but other smart contracts could potentially run in other realms in  parallel. So realms allow Solidity to be parallelized somewhat, even though the  language itself assumes everything is serial. */
+/* Each shard has a nonnegative shard number.
+ * Each realm within a given shard has a nonnegative realm number (that number might be reused in other shards).
+ * And each account, file, and smart contract instance within a given realm has a nonnegative number (which might be reused in other realms).
+ * Every account, file, and smart contract instance is within exactly one realm.
+ * So a FileID is a triplet of numbers, like 0.1.2 for entity number 2 within realm 1  within shard 0.
+ * Each realm maintains a single counter for assigning numbers,  so if there is a file with ID 0.1.2,
+ * then there won't be an account or smart  contract instance with ID 0.1.2.
+ * Everything is partitioned into realms so that each Solidity smart contract can  access everything in just a single realm,
+ * locking all those entities while it's  running, but other smart contracts could potentially run in other realms in  parallel.
+ * So realms allow Solidity to be parallelized somewhat, even though the  language itself assumes everything is serial. */
 message ShardID {
 	int64 shardNum = 1; //the shard number (nonnegative)
 }
 
-/* The ID for a realm. Within a given shard, every realm has a unique ID. Each account, file, and contract instance belongs to exactly one realm. */
+/* The ID for a realm.
+ * Within a given shard, every realm has a unique ID.
+ * Each account, file, and contract instance belongs to exactly one realm. */
 message RealmID {
 	int64 shardNum = 1; //the shard number (nonnegative)
 	int64 realmNum = 2; //the realm number (nonnegative)
@@ -42,22 +51,38 @@ message ContractID {
 	int64 contractNum = 3; //a nonnegative number unique within its realm
 }
 
-/* The ID for a transaction. This is used for retrieving receipts and records for a transaction, for appending to a file right after creating it, for instantiating a smart contract with bytecode in a file just created, and internally by the network for detecting when duplicate transactions are submitted. A user might get a transaction processed faster by submitting it to N nodes, each with a different node account, but all with the same TransactionID. Then, the transaction will take effect when the first of all those nodes submits the transaction and it reaches consensus. The other transactions will not take effect. So this could make the transaction take effect faster, if any given node might be slow. However, the full transaction fee is charged for each transaction, so the total fee is N times as much if the transaction is sent to N nodes. */
+/* The ID for a transaction.
+ * This is used for retrieving receipts and records for a transaction, for appending to a file right after creating it,
+ * for instantiating a smart contract with bytecode in a file just created, and internally by the network for detecting when duplicate transactions are submitted.
+ * A user might get a transaction processed faster by submitting it to N nodes, each with a different node account, but all with the same TransactionID.
+ * Then, the transaction will take effect when the first of all those nodes submits the transaction and it reaches consensus.
+ * The other transactions will not take effect. So this could make the transaction take effect faster, if any given node might be slow.
+ * However, the full transaction fee is charged for each transaction, so the total fee is N times as much if the transaction is sent to N nodes. */
 message TransactionID {
 	AccountID accountID = 2; //the account that paid for this transaction
 	Timestamp transactionValidStart = 1; // the transaction is invalid if consensusTimestamp < transactionID.transactionStartValid
 }
 
 
-/* A Key can be a public key from one of the three supported systems (ed25519, RSA-3072,  ECDSA with p384). Or, it can be the ID of a smart contract instance, which is authorized to act as if it had a key. If an account has an ed25519 key associated with it, then the corresponding private key must sign any transaction to transfer cryptocurrency out of it. And similarly for RSA and ECDSA.
+/* A Key can be a public key from one of the three supported systems (ed25519, RSA-3072,  ECDSA with p384).
+ * Or, it can be the ID of a smart contract instance, which is authorized to act as if it had a key.
+ * If an account has an ed25519 key associated with it, then the corresponding private key must sign any transaction to transfer cryptocurrency out of it.
+ * And similarly for RSA and ECDSA.
  *
- * A Key can be a smart contract ID, which means that smart contract is to authorize operations as if it had signed with a key that it owned. The smart contract doesn't actually have a key, and  doesn't actually sign a transaction. But it's as if a virtual transaction were created, and the smart contract signed it with a private key.
+ * A Key can be a smart contract ID, which means that smart contract is to authorize operations as if it had signed with a key that it owned.
+ * The smart contract doesn't actually have a key, and  doesn't actually sign a transaction. But it's as if a virtual transaction were created,
+ * and the smart contract signed it with a private key.
  *
- * A key can be a "threshold key", which means a list of M keys, any N of which must sign in order for the threshold signature to be considered valid. The keys within a threshold signature may themselves be threshold signatures, to allow complex signature requirements.
+ * A key can be a "threshold key", which means a list of M keys, any N of which must sign in order for the threshold signature to be considered valid.
+ * The keys within a threshold signature may themselves be threshold signatures, to allow complex signature requirements.
  *
- * A Key can be a list of keys. Their use is dependent on context. For example, a Hedera file is created with a list of keys, where all of them must sign a transaction to create or modify the file, but only one of them is needed to sign a transaction to delete the file. So it's a single list that sometimes acts as a 1-of-M threshold key, and sometimes acts as an M-of-M threshold key.
+ * A Key can be a list of keys. Their use is dependent on context. For example, a Hedera file is created with a list of keys,
+ * where all of them must sign a transaction to create or modify the file, but only one of them is needed to sign a transaction to delete the file.
+ * So it's a single list that sometimes acts as a 1-of-M threshold key, and sometimes acts as an M-of-M threshold key.
  *
- * A Key can contain a ThresholdKey or KeyList, which in turn contain a Key, so this mutual recursion would allow nesting arbitrarily deep. The current API only allows the nesting to a depth of 3 levels, such as the key being a list of threshold keys, each of which contains a list of primitive keys (e.g., ed25519). In the future, this requirement may be relaxed, to allow deeper nesting.
+ * A Key can contain a ThresholdKey or KeyList, which in turn contain a Key, so this mutual recursion would allow nesting arbitrarily deep.
+ * The current API only allows the nesting to a depth of 3 levels, such as the key being a list of threshold keys,
+ * each of which contains a list of primitive keys (e.g., ed25519). In the future, this requirement may be relaxed, to allow deeper nesting.
  */
  message Key {
 	oneof key {
@@ -70,7 +95,10 @@ message TransactionID {
 	}
 }
 
-/* A set of public keys that are used together to form a threshold signature. If the threshold is N and there are M keys, then this is an N of M threshold signature. If an account is associated with ThresholdKeys, then a transaction to move cryptocurrency out of it must be signed by a list of M signatures, where at most M-N of them are blank, and the other at least N of them are valid signatures corresponding to at least N of the public keys listed here. */
+/* A set of public keys that are used together to form a threshold signature.
+ * If the threshold is N and there are M keys, then this is an N of M threshold signature.
+ * If an account is associated with ThresholdKeys, then a transaction to move cryptocurrency out of it must be signed by a list of M signatures,
+ * where at most M-N of them are blank, and the other at least N of them are valid signatures corresponding to at least N of the public keys listed here. */
 message ThresholdKey {
 	uint32 threshold = 1; // a valid signature set must have at least this many signatures
 	repeated Key keys = 2; // list of all the keys that can sign
@@ -81,9 +109,22 @@ message KeyList {
 	repeated Key keys = 1; // list of keys
 }
 
-/* A Signature corresponding to a Key. It is a sequence of bytes holding a public key signature from one of the three supported systems (ed25519, RSA-3072,  ECDSA with p384). Or, it can be a list of signatures corresponding to a single threshold key. Or, it can be the ID of a smart contract instance, which is authorized to act as if it had a key. If an account has an ed25519 key associated with it, then the corresponding private key must sign any transaction to transfer cryptocurrency out of it. If it has a smart contract ID associated with it, then that smart contract is allowed to transfer cryptocurrency out of it. The smart contract doesn't actually have a key, and  doesn't actually sign a transaction. But it's as if a virtual transaction were created, and the smart contract signed it with a private key. A key can also be a "threshold key", which means a list of M keys, any N of which must sign in order for the threshold signature to be considered valid. The keys within a threshold signature may themselves be threshold signatures, to allow complex signature requirements (this nesting is not supported in the currently, but will be supported in a future version of API). If a Signature message is missing the "signature" field, then this is considered to be a null signature. That is useful in cases such as threshold signatures, where some of the signatures can be null.
+/* A Signature corresponding to a Key. It is a sequence of bytes holding a public key signature from one of the three supported systems (ed25519, RSA-3072,  ECDSA with p384).
+ * Or, it can be a list of signatures corresponding to a single threshold key.
+ * Or, it can be the ID of a smart contract instance, which is authorized to act as if it had a key.
+ * If an account has an ed25519 key associated with it, then the corresponding private key must sign any transaction to transfer cryptocurrency out of it.
+ * If it has a smart contract ID associated with it, then that smart contract is allowed to transfer cryptocurrency out of it.
+ * The smart contract doesn't actually have a key, and  doesn't actually sign a transaction.
+ * But it's as if a virtual transaction were created, and the smart contract signed it with a private key.
+ * A key can also be a "threshold key", which means a list of M keys, any N of which must sign in order for the threshold signature to be considered valid.
+ * The keys within a threshold signature may themselves be threshold signatures,
+ * to allow complex signature requirements (this nesting is not supported in the currently, but will be supported in a future version of API).
+ * If a Signature message is missing the "signature" field, then this is considered to be a null signature.
+ * That is useful in cases such as threshold signatures, where some of the signatures can be null.
  *
- * The definition of Key uses mutual recursion, so it allows nesting that is arbitrarily deep. But the current API only accepts Key messages up to 3 levels deep, such as a list of threshold keys, each of which is a list of primitive keys. Therefore, the matching Signature will have the same limitation. This restriction may be relaxed in future versions of the API, to allow deeper nesting.
+ * The definition of Key uses mutual recursion, so it allows nesting that is arbitrarily deep.
+ * But the current API only accepts Key messages up to 3 levels deep, such as a list of threshold keys, each of which is a list of primitive keys.
+ * Therefore, the matching Signature will have the same limitation. This restriction may be relaxed in future versions of the API, to allow deeper nesting.
  */
  message Signature {
 	oneof signature {
